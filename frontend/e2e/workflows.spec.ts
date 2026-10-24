@@ -1,7 +1,9 @@
+import { enterAdminSimulation } from "./fixtures/admin";
 import { test, expect } from "@playwright/test";
 import { mockMapTiles } from "./fixtures/tiles";
 test.beforeEach(async ({ page }) => {
   await mockMapTiles(page);
+  await enterAdminSimulation(page);
 });
 
 test("dispatcher corrections, approval, responder receipt and history stay consistent", async ({
@@ -29,21 +31,23 @@ test("dispatcher corrections, approval, responder receipt and history stay consi
     .selectOption("U07");
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Approve assignment" }).click();
-  await page.getByRole("button", { name: "Open responder view" }).click();
+  await page.getByRole("button", { name: "Review assignment" }).click();
   await expect(
-    page.getByRole("combobox", { name: "Viewing unit", exact: true }),
+    page.getByRole("combobox", { name: "Review unit", exact: true }),
   ).toHaveValue("U07");
   await expect(page.locator(".hazard-notice")).toContainText("Unknown");
-  await page.getByRole("button", { name: "Acknowledge assignment" }).click();
+  await page
+    .getByRole("button", { name: "Demo: simulate acknowledgement" })
+    .click();
   await expect(
-    page.getByRole("button", { name: "Receipt acknowledged" }),
+    page.getByRole("button", { name: "Demo acknowledgement recorded" }),
   ).toBeDisabled();
-  await expect(page.locator(".unit-meta")).toContainText(
-    "Travel statusUnknown",
-  );
+  await expect(
+    page.locator(".admin-assignment-review .unit-meta"),
+  ).toContainText("Travel statusUnknown");
   await page.getByRole("link", { name: "Activity", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Assignment acknowledged" }),
+    page.getByRole("heading", { name: "Demo acknowledgement simulated" }),
   ).toBeVisible();
   await expect(
     page.getByText("CALL-002 does not verify the water report.", {
@@ -111,9 +115,16 @@ test("mobile navigation and responder layout remain usable", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await page.getByRole("button", { name: "Toggle navigation" }).click();
-  await page.getByRole("link", { name: "Responder view", exact: true }).click();
+  await page.getByRole("link", { name: "Responders", exact: true }).click();
+  await page
+    .locator(".unit-grid .panel")
+    .filter({
+      has: page.getByRole("heading", { name: "Rescue 04", exact: true }),
+    })
+    .getByRole("button", { name: "Review assignment", exact: true })
+    .click();
   await expect(
-    page.getByRole("button", { name: "Acknowledge assignment" }),
+    page.getByRole("button", { name: "Demo: simulate acknowledgement" }),
   ).toBeVisible();
   expect(
     await page.evaluate(

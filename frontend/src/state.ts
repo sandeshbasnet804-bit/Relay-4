@@ -142,3 +142,22 @@ export function reviewCall(
     ),
   };
 }
+
+// Explicit admin demo action. Keep the original receipt command available for
+// the teammate's responder integration; this wrapper records simulation intent.
+export function simulateAcknowledgement(state: Snapshot, id: string): Snapshot {
+  const next = acknowledgeAssignment(state, id);
+  if (next === state) return state;
+  return {
+    ...next,
+    activity: next.activity.map((entry, index) =>
+      index === 0
+        ? {
+            ...entry,
+            title: "Demo acknowledgement simulated",
+            detail: `Demo admin simulated receipt. ${entry.detail}`,
+          }
+        : entry,
+    ),
+  };
+}

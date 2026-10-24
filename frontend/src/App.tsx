@@ -3,7 +3,6 @@ import {
   Activity,
   ArrowRight,
   Check,
-  ChevronRight,
   CircleCheck,
   Clock3,
   FlaskConical,
@@ -29,20 +28,14 @@ import IncidentTags from "./components/IncidentTags";
 import { disciplineLabel, displayTimestamp } from "./gis";
 import RelayLogo from "./components/RelayLogo";
 import {
-  acknowledgeAssignment,
+  simulateAcknowledgement,
   approveAssignment,
   correctIncident,
   reviewCall,
 } from "./state";
 import type { Correction, Incident, Snapshot } from "./types";
-type Route =
-  | "home"
-  | "map"
-  | "incidents"
-  | "calls"
-  | "responders"
-  | "activity"
-  | "responder";
+import type { AdminSession } from "./auth/adminAuth";
+type Route = "home" | "map" | "incidents" | "calls" | "responders" | "activity";
 const navigation: { id: Route; label: string; icon: typeof House }[] = [
   { id: "home", label: "Home", icon: House },
   { id: "map", label: "Map", icon: MapIcon },
@@ -56,12 +49,12 @@ const titles: Record<Route, string> = {
   map: "Incident map",
   incidents: "Incident details",
   calls: "Call records",
-  responders: "Responder coordination",
+  responders: "Responder management",
   activity: "Activity history",
-  responder: "Your assignment",
 };
 function readRoute(): Route {
   const part = window.location.hash.slice(2).split("/")[0];
+  if (part === "responder") return "responders";
   return [
     "home",
     "map",
@@ -69,7 +62,6 @@ function readRoute(): Route {
     "calls",
     "responders",
     "activity",
-    "responder",
   ].includes(part)
     ? (part as Route)
     : "home";
@@ -123,7 +115,15 @@ function IncidentIcon({ incident }: { incident: Incident }) {
     </span>
   );
 }
-export default function App() {
+export default function App({
+  session,
+  onSignOut,
+  signingOut,
+}: {
+  session: AdminSession;
+  onSignOut: () => void;
+  signingOut: boolean;
+}) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [route, setRoute] = useState<Route>(readRoute);
   const [selected, setSelected] = useState("R4-001");
@@ -136,10 +136,13 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [unit, setUnit] = useState("U04");
+  const [reviewAssignment, setReviewAssignment] = useState(false);
   useEffect(() => {
     simulationApi.load().then(setData);
     const handler = () => {
       setRoute(readRoute());
+      if (window.location.hash.split("/")[1] === "responder")
+        window.history.replaceState(null, "", "#/responders");
       setMenu(false);
       const id = window.location.hash.split("/")[2];
       if (id) setSelected(id);
@@ -165,7 +168,7 @@ export default function App() {
       setError((e as Error).message);
     }
   }
-  if (!data) return <div className="loading">Loading Relay4 simulation…</div>;
+  if (!data) return <div className="loading">Loading Admin simulation…</div>;
   const incident =
     data.incidents.find((i) => i.id === selected) ?? data.incidents[0];
   const matches = (i: Incident) =>
@@ -297,7 +300,7 @@ export default function App() {
     <div className="app">
       <aside className={`sidebar ${menu ? "is-open" : ""}`}>
         <RelayLogo onHome={() => go("home")} />
-        <div className="workspace-label">LOUISIANA COORDINATION</div>
+        <div className="workspace-label">LOUISIANA · ADMIN PORTAL</div>
         <nav aria-label="Main navigation">
           {navigation.map(({ id, label, icon: Icon }) => (
             <a
@@ -315,21 +318,27 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <a
-            href="#/responder"
-            className={`responder-link ${route === "responder" ? "active" : ""}`}
-          >
-            <Truck size={19} />
-            Responder view
-            <ChevronRight size={16} />
-          </a>
           <div className="profile">
             <span className="avatar">D</span>
             <span>
-              <strong>Demo dispatcher</strong>
-              <small>Simulation workspace</small>
+              <strong>{session.displayName}</strong>
+              <small>
+                {session.mode === "simulation"
+                  ? "Admin simulation"
+                  : "Admin workspace"}
+              </small>
             </span>
           </div>
+          <button
+            type="button"
+            className="admin-session-action"
+            disabled={signingOut}
+            onClick={onSignOut}
+          >
+            {session.mode === "simulation"
+              ? "Exit Admin simulation"
+              : "Sign out"}
+          </button>
           <div className="team">
             <Users size={19} />
             <span>
@@ -357,7 +366,7 @@ export default function App() {
               <Menu />
             </button>
             <div>
-              <p className="eyebrow">OPERATIONS WORKSPACE</p>
+              <p className="eyebrow">INTERNAL ADMIN WORKSPACE</p>
               <h1>{titles[route]}</h1>
             </div>
           </div>
@@ -377,14 +386,14 @@ export default function App() {
           </label>
           <span className="feed">
             <i />
-            Local demo
+            Admin simulation
           </span>
         </header>
         <div className="simulation">
           <FlaskConical size={18} />
-          <strong>SIMULATION</strong>
+          <strong>Admin simulation</strong>
           <span>Synthetic incidents · no live dispatch</span>
-          <span className="simulation-tag">TRAINING WORKSPACE</span>
+          <span className="simulation-tag">ADMIN WORKSPACE</span>
         </div>
         {notice && (
           <div className="notice" role="status">
@@ -498,7 +507,11 @@ export default function App() {
                         <button
                           className="pending-action"
                           key={a.id}
-                          onClick={() => go("responders", a.incidentId)}
+                          onClick={() => {
+                            setUnit(a.unitId);
+                            setReviewAssignment(true);
+                            go("responders", a.incidentId);
+                          }}
                         >
                           <Truck size={23} />
                           <span>
@@ -752,10 +765,11 @@ export default function App() {
                         className="button secondary wide"
                         onClick={() => {
                           setUnit(assignment.unitId);
-                          go("responder");
+                          setReviewAssignment(true);
+                          go("responders");
                         }}
                       >
-                        Open responder view
+                        Review assignment
                         <ArrowRight size={16} />
                       </button>
                     </div>
@@ -926,10 +940,11 @@ export default function App() {
                         className="button secondary wide"
                         onClick={() => {
                           setUnit(u.id);
-                          go("responder");
+                          setReviewAssignment(true);
+                          go("responders");
                         }}
                       >
-                        Open responder view
+                        Review assignment
                         <ArrowRight size={16} />
                       </button>
                     </Panel>
@@ -982,102 +997,115 @@ export default function App() {
             ) && <div className="empty">No activity matches your search.</div>}
           </Panel>
         )}
-        {route === "responder" && (
-          <div className="responder-layout">
-            <div className="toolbar">
-              <label>
-                Viewing unit
-                <select value={unit} onChange={(e) => setUnit(e.target.value)}>
-                  {data.units.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <span className="badge good">Responder simulation</span>
-            </div>
-            {assignedIncident && unitAssignment ? (
-              <Panel
-                eyebrow={`${assignedIncident.id} · APPROVED ASSIGNMENT`}
-                title={assignedIncident.title}
-              >
-                <Badge good={unitAssignment.acknowledged}>
-                  {unitAssignment.acknowledged
-                    ? "Acknowledged"
-                    : "Awaiting your acknowledgement"}
-                </Badge>
-                <div className="responder-location location">
-                  <MapPin size={25} />
-                  <div>
-                    <strong>{assignedIncident.location}</strong>
-                    <span>{assignedIncident.detail}</span>
-                  </div>
-                </div>
-                <IncidentTags incident={assignedIncident} />
-                <p className="muted small">
-                  {assignedIncident.source} · Updated{" "}
-                  {displayTimestamp(assignedIncident.updatedAt)}
-                </p>
-                {facts(assignedIncident)}
-                <IncidentMap
-                  incidents={[assignedIncident]}
-                  selectedIncidentId={assignedIncident.id}
-                />
-                <div className="hazard-notice">
-                  <TriangleAlert size={20} />
-                  <span>
-                    <strong>Latest reported hazard</strong>
-                    {assignedIncident.hazards}
-                  </span>
-                </div>
-                <p className="muted">
-                  Review the latest information above before acknowledging
-                  receipt.
-                </p>
-                <button
-                  className="button acknowledge wide"
-                  disabled={unitAssignment.acknowledged}
-                  onClick={() =>
-                    update(
-                      (s) => acknowledgeAssignment(s, unitAssignment.id),
-                      "Receipt acknowledged. Travel status remains Unknown.",
-                    )
-                  }
-                >
-                  <Check />
-                  {unitAssignment.acknowledged
-                    ? "Receipt acknowledged"
-                    : "Acknowledge assignment"}
-                </button>
-                <p className="ack-note">
-                  Acknowledgement confirms receipt only. It does not mean “en
-                  route.”
-                </p>
-                <div className="unit-meta">
-                  <span>
-                    Travel status<strong>Unknown</strong>
-                  </span>
-                  <span>
-                    Approved by<strong>{unitAssignment.approvedBy}</strong>
-                  </span>
-                </div>
-              </Panel>
-            ) : (
-              <Panel title="No assigned incident">
-                <div className="empty">
-                  <Truck size={35} />
-                  <p>This unit has no human-approved assignment.</p>
-                  <button
-                    className="button secondary"
-                    onClick={() => go("incidents")}
+        {route === "responders" && reviewAssignment && (
+          <section
+            className="admin-assignment-review"
+            aria-label="Admin assignment review"
+          >
+            <h2>Assignment review</h2>
+            <div className="responder-layout">
+              <div className="toolbar">
+                <label>
+                  Review unit
+                  <select
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
                   >
-                    Review incidents
-                  </button>
-                </div>
-              </Panel>
-            )}
-          </div>
+                    {data.units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span className="badge good">
+                  Admin simulation · assignment review
+                </span>
+              </div>
+              {assignedIncident && unitAssignment ? (
+                <Panel
+                  eyebrow={`${assignedIncident.id} · APPROVED ASSIGNMENT`}
+                  title={assignedIncident.title}
+                >
+                  <Badge good={unitAssignment.acknowledged}>
+                    {unitAssignment.acknowledged
+                      ? "Acknowledged"
+                      : "Awaiting responder acknowledgement"}
+                  </Badge>
+                  <div className="responder-location location">
+                    <MapPin size={25} />
+                    <div>
+                      <strong>{assignedIncident.location}</strong>
+                      <span>{assignedIncident.detail}</span>
+                    </div>
+                  </div>
+                  <IncidentTags incident={assignedIncident} />
+                  <p className="muted small">
+                    {assignedIncident.source} · Updated{" "}
+                    {displayTimestamp(assignedIncident.updatedAt)}
+                  </p>
+                  {facts(assignedIncident)}
+                  <IncidentMap
+                    incidents={[assignedIncident]}
+                    selectedIncidentId={assignedIncident.id}
+                  />
+                  <div className="hazard-notice">
+                    <TriangleAlert size={20} />
+                    <span>
+                      <strong>Latest reported hazard</strong>
+                      {assignedIncident.hazards}
+                    </span>
+                  </div>
+                  <p className="muted">
+                    Admin review of the latest reported information. Demo
+                    actions simulate receipt only.
+                  </p>
+                  {session.mode === "simulation" && (
+                    <button
+                      className="button acknowledge wide"
+                      disabled={unitAssignment.acknowledged}
+                      onClick={() =>
+                        update(
+                          (s) => simulateAcknowledgement(s, unitAssignment.id),
+                          "Demo acknowledgement recorded. Travel status remains Unknown.",
+                        )
+                      }
+                    >
+                      <Check />
+                      {unitAssignment.acknowledged
+                        ? "Demo acknowledgement recorded"
+                        : "Demo: simulate acknowledgement"}
+                    </button>
+                  )}
+                  <p className="ack-note">
+                    Acknowledgement confirms receipt only. It does not mean “en
+                    route.”
+                  </p>
+                  <div className="unit-meta">
+                    <span>
+                      Travel status<strong>Unknown</strong>
+                    </span>
+                    <span>
+                      Approved by<strong>{unitAssignment.approvedBy}</strong>
+                    </span>
+                  </div>
+                </Panel>
+              ) : (
+                <Panel title="No assigned incident">
+                  <div className="empty">
+                    <Truck size={35} />
+                    <p>This unit has no human-approved assignment.</p>
+                    <button
+                      className="button secondary"
+                      onClick={() => go("incidents")}
+                    >
+                      Review incidents
+                    </button>
+                  </div>
+                </Panel>
+              )}
+            </div>
+          </section>
         )}
         <footer>
           <div className="footer-branding">
@@ -1104,7 +1132,7 @@ function CorrectionForm({
   const [value, setValue] = useState(incident.location);
   const [reason, setReason] = useState("");
   return (
-    <Panel title="Correct incident facts" eyebrow="DISPATCHER REVIEW">
+    <Panel title="Correct incident facts" eyebrow="ADMIN REVIEW">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -1214,8 +1242,7 @@ function AssignmentForm({
           onChange={(e) => setConfirmed(e.target.checked)}
         />
         <span>
-          I reviewed the incident and approve this assignment as the demo
-          dispatcher.
+          I reviewed the incident and approve this assignment as the demo admin.
         </span>
       </label>
       <button className="button wide" disabled={!confirmed || !unit}>

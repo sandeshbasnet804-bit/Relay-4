@@ -1,7 +1,9 @@
+import { enterAdminSimulation } from "./fixtures/admin";
 import { test, expect } from "@playwright/test";
 import { mockMapTiles } from "./fixtures/tiles";
 test.beforeEach(async ({ page }) => {
   await mockMapTiles(page);
+  await enterAdminSimulation(page);
 });
 
 test("zoom buttons, wheel, dragging, keyboard pan and recenter change only the viewport", async ({
@@ -147,10 +149,10 @@ test("text correction removes the stale pin on all routes; approval updates popu
     page.locator('.leaflet-marker-icon[title^="R4-001"]'),
   ).toHaveCount(0);
   await page
-    .getByRole("button", { name: "Open responder view", exact: true })
+    .getByRole("button", { name: "Review assignment", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Your assignment", exact: true }),
+    page.getByRole("heading", { name: "Responder management", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".map-location-note")).toContainText(
     "Exact location unknown",
@@ -257,15 +259,25 @@ test("mobile map, dialog and responder map fit small screens", async ({
   });
   await page.getByRole("button", { name: "Close expanded map" }).click();
   await page.getByRole("button", { name: "Toggle navigation" }).click();
-  await page.getByRole("link", { name: "Responder view", exact: true }).click();
+  await page.getByRole("link", { name: "Responders", exact: true }).click();
+  await page
+    .locator(".unit-grid .panel")
+    .filter({
+      has: page.getByRole("heading", { name: "Rescue 04", exact: true }),
+    })
+    .getByRole("button", { name: "Review assignment", exact: true })
+    .click();
   await expect(
-    page.getByRole("heading", { name: "Your assignment", exact: true }),
+    page.getByRole("heading", { name: "Responder management", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".map-location-note")).toContainText(
     "Exact location unknown",
   );
   await expect(
-    page.getByRole("button", { name: "Acknowledge assignment", exact: true }),
+    page.getByRole("button", {
+      name: "Demo: simulate acknowledgement",
+      exact: true,
+    }),
   ).toBeVisible();
   expect(
     await page.evaluate(
@@ -284,6 +296,7 @@ test("touch pinch zoom works without changing incident facts", async ({
   });
   const page = await context.newPage();
   await mockMapTiles(page);
+  await enterAdminSimulation(page);
   await page.goto("/");
   await page.getByRole("button", { name: "Expand incident map" }).click();
   const map = page.getByRole("region", {

@@ -1,0 +1,131 @@
+.admin-entry {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 28px 16px;
+  background: #f1f5f9;
+}
+main.admin-sign-in {
+  margin: 0;
+  padding: 0;
+  width: min(100%, 470px);
+  min-height: 0;
+  background: white;
+  border: 1px solid #dce5ef;
+  border-radius: 10px;
+  box-shadow: 0 12px 45px #0b29470b;
+  overflow: hidden;
+}
+.admin-entry-brand {
+  background: #0b2947;
+  padding: 26px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.admin-entry-brand > span {
+  color: #a2b9cf;
+  font-size: 9px;
+  letter-spacing: 1.6px;
+  text-align: center;
+}
+.admin-entry-content {
+  padding: 28px;
+}
+.admin-entry-icon {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #edf5e1;
+  color: #5b7f31;
+  margin-bottom: 17px;
+}
+.admin-entry-content h1 {
+  font-size: 28px;
+}
+.admin-entry-content > p:not(.eyebrow) {
+  color: #75879a;
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 13px 0 20px;
+}
+.admin-entry-content .admin-entry-unavailable {
+  text-align: center;
+  font-size: 11px;
+  margin: 8px 0 22px;
+}
+.admin-demo-entry {
+  border: 1px solid #e2ead7;
+  background: #f5f9ee;
+  border-radius: 7px;
+  padding: 17px;
+}
+.admin-demo-entry h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+.admin-demo-entry p {
+  color: #75876b;
+  font-size: 11px;
+  line-height: 1.8;
+  margin: 10px 0 14px;
+}
+.admin-entry-content .admin-entry-boundary {
+  font-size: 10px;
+  margin: 18px 0 0;
+  color: #8a98a8;
+}
+.admin-entry-content .admin-entry-error {
+  color: #a34f3d;
+}
+.admin-session-error {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  background: #fff2e9;
+  color: #945234;
+  border: 1px solid #e6cfba;
+  border-radius: 5px;
+  padding: 14px;
+  z-index: 50;
+  font-size: 12px;
+}
+.admin-session-action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px;
+  margin: 0 0 18px;
+  border: 1px solid #ffffff30;
+  background: none;
+  border-radius: 5px;
+  color: #c4d3e4;
+  font-size: 11px;
+}
+.admin-assignment-review {
+  margin-top: 24px;
+  border-top: 1px solid #e2e9f2;
+  padding-top: 22px;
+}
+.admin-assignment-review h2 {
+  margin-bottom: 16px;
+}
+@media (max-width: 650px) {
+  .admin-entry {
+    padding: 16px;
+  }
+  .admin-entry-content {
+    padding: 22px;
+  }
+  .admin-session-action {
+    min-height: 44px;
+  }
+}

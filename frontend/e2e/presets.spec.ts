@@ -1,7 +1,9 @@
+import { enterAdminSimulation } from "./fixtures/admin";
 import { test, expect, type Page } from "@playwright/test";
 import { mockMapTiles } from "./fixtures/tiles";
 test.beforeEach(async ({ page }) => {
   await mockMapTiles(page);
+  await enterAdminSimulation(page);
 });
 const camera = async (page: Page) => {
   const element = page.locator(".map-contents");
@@ -184,20 +186,21 @@ test("loading, error, unavailable and empty context remain usable with explicit 
     }),
   );
   await page.goto("/#/map/R4-004");
+  await page.reload();
   await page
     .getByRole("combobox", { name: "Response preset", exact: true })
     .selectOption("fire");
-  const initialZoom=(await camera(page)).zoom;
-  await page.getByRole('button',{name:'Zoom in',exact:true}).click();
-  await expect.poll(async()=>(await camera(page)).zoom).toBe(initialZoom+1);
-  const before=await camera(page);
+  const initialZoom = (await camera(page)).zoom;
+  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await expect
+    .poll(async () => (await camera(page)).zoom)
+    .toBe(initialZoom + 1);
+  const before = await camera(page);
   await page.locator(".gis-layers summary").click();
   await expect(
-    page
-      .locator('[data-layer-id="hydrants"]')
-      .filter({
-        has: page.getByRole("checkbox", { name: "Hydrants", exact: true }),
-      }),
+    page.locator('[data-layer-id="hydrants"]').filter({
+      has: page.getByRole("checkbox", { name: "Hydrants", exact: true }),
+    }),
   ).toContainText("Error");
   await expect(
     page.getByRole("checkbox", { name: "Medical access points", exact: true }),
@@ -243,6 +246,7 @@ test("unknown coordinates never produce invented preset pins or boundaries", asy
     }),
   );
   await page.goto("/#/map");
+  await page.reload();
   await page
     .getByRole("combobox", { name: "Response preset", exact: true })
     .selectOption("fire");

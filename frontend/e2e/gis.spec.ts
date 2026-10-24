@@ -1,7 +1,9 @@
+import { enterAdminSimulation } from "./fixtures/admin";
 import { test, expect } from "@playwright/test";
 import { mockMapTiles } from "./fixtures/tiles";
 test.beforeEach(async ({ page }) => {
   await mockMapTiles(page);
+  await enterAdminSimulation(page);
 });
 
 test("category chips include secondary fire tags and synchronize markers with the list", async ({
@@ -134,7 +136,7 @@ test("context toggles retain provenance and tolerate empty or unavailable layers
   ).toBeVisible();
 });
 
-test("collision fire and EMS approvals stay separate across Map, Home, Details and Responder View", async ({
+test("collision fire and EMS approvals stay separate across admin Map, Home, Details and assignment review", async ({
   page,
 }) => {
   await page.goto("/#/map/R4-004");
@@ -163,16 +165,19 @@ test("collision fire and EMS approvals stay separate across Map, Home, Details a
   await page
     .locator(".assignment-entry")
     .filter({ hasText: "EMS 09" })
-    .getByRole("button", { name: "Open responder view", exact: true })
+    .getByRole("button", { name: "Review assignment", exact: true })
     .click();
   await expect(
-    page.getByRole("combobox", { name: "Viewing unit", exact: true }),
+    page.getByRole("combobox", { name: "Review unit", exact: true }),
   ).toHaveValue("U09");
   await expect(page.locator(".hazard-notice")).toContainText(
     "Fuel leakage and smoke reported",
   );
   await page
-    .getByRole("button", { name: "Acknowledge assignment", exact: true })
+    .getByRole("button", {
+      name: "Demo: simulate acknowledgement",
+      exact: true,
+    })
     .click();
   await page.getByRole("link", { name: "Map", exact: true }).click();
   await expect(page.locator(".gis-selected")).toContainText(
